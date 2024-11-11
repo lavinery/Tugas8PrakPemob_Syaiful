@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ApiService } from '../service/api.service';
 import { ModalController } from '@ionic/angular';
+import { AlertController } from '@ionic/angular';
 
 @Component({
   selector: 'app-mahasiswa',
@@ -10,7 +11,7 @@ import { ModalController } from '@ionic/angular';
 export class MahasiswaPage implements OnInit {
   dataMahasiswa: any;
 
-  constructor(private api: ApiService, private modal: ModalController) { }
+  constructor(private api: ApiService, private modal: ModalController, private alert: AlertController) { }
 
   ngOnInit() {
     this.getMahasiswa();
@@ -27,6 +28,11 @@ export class MahasiswaPage implements OnInit {
       },
     });
   }
+
+  showAlert = false;
+alertHeader: string = '';
+alertMessage: string = '';
+
 
   modalTambah: any;
 id: any;
@@ -53,42 +59,71 @@ cancel() {
   this.resetModal();
 }
 
+showSuccessAlert(header: string, message: string) {
+  this.alertHeader = header;
+  this.alertMessage = message;
+  this.showAlert = true; 
+}
+
 tambahMahasiswa() {
-  if (this.nama != '' && this.jurusan != '') {
+  if (this.nama !== '' && this.jurusan !== '') {
     let data = {
       nama: this.nama,
       jurusan: this.jurusan,
-    }
-    this.api.tambah(data, 'tambah.php')
-      .subscribe({
-        next: (hasil: any) => {
-          this.resetModal();
-          console.log('berhasil tambah mahasiswa');
-          this.getMahasiswa();
-          this.modalTambah = false;
-          this.modal.dismiss();
-        },
-        error: (err: any) => {
-          console.log('gagal tambah mahasiswa');
-        }
-      })
+    };
+    this.api.tambah(data, 'tambah.php').subscribe({
+      next: (hasil: any) => {
+        this.resetModal();
+        this.getMahasiswa();
+        this.modalTambah = false;
+        this.modal.dismiss();
+        this.showSuccessAlert('Tambah Data', 'Data berhasil ditambahkan');
+      },
+      error: (err: any) => {
+        console.log('gagal tambah mahasiswa');
+      },
+    });
   } else {
     console.log('gagal tambah mahasiswa karena masih ada data yg kosong');
   }
 }
 
+
 hapusMahasiswa(id: any) {
-  this.api.hapus(id,
-    'hapus.php?id=').subscribe({
-      next: (res: any) => {
-        console.log('sukses', res);
-        this.getMahasiswa();
-        console.log('berhasil hapus data');
+  this.confirmDelete(id);
+}
+
+async confirmDelete(id: any) {
+  const alert = await this.alert.create({
+    header: 'Konfirmasi Hapus',
+    message: 'Apakah Anda yakin ingin menghapus data ini?',
+    buttons: [
+      {
+        text: 'Batal',
+        role: 'cancel',
+        handler: () => {
+          console.log('Penghapusan dibatalkan');
+        },
       },
-      error: (error: any) => {
-        console.log('gagal');
-      }
-    })
+      {
+        text: 'Hapus',
+        role: 'destructive',
+        handler: () => {
+          this.api.hapus(id, 'hapus.php?id=').subscribe({
+            next: (res: any) => {
+              this.getMahasiswa();
+              this.showSuccessAlert('Hapus Data', 'Data berhasil dihapus');
+            },
+            error: (error: any) => {
+              console.log('gagal');
+            },
+          });
+        },
+      },
+    ],
+  });
+
+  await alert.present();
 }
 
 ambilMahasiswa(id: any) {
@@ -122,24 +157,19 @@ editMahasiswa() {
   let data = {
     id: this.id,
     nama: this.nama,
-    jurusan: this.jurusan
-  }
-  this.api.edit(data, 'edit.php')
-    .subscribe({
-      next: (hasil: any) => {
-        console.log(hasil);
-        this.resetModal();
-        this.getMahasiswa();
-        console.log('berhasil edit Mahasiswa');
-        this.modalEdit = false;
-        this.modal.dismiss();
-      },
-      error: (err: any) => {
-        console.log('gagal edit Mahasiswa');
-      }
-    })
+    jurusan: this.jurusan,
+  };
+  this.api.edit(data, 'edit.php').subscribe({
+    next: (hasil: any) => {
+      this.resetModal();
+      this.getMahasiswa();
+      this.showSuccessAlert('Edit Data', 'Data berhasil diubah');
+      this.modalEdit = false;
+      this.modal.dismiss();
+    },
+    error: (err: any) => {
+      console.log('gagal edit Mahasiswa');
+    },
+  });
 }
-
-
-
 }
